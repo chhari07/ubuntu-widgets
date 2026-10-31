@@ -246,6 +246,18 @@ class Widget(Gtk.Window):
         area = (display.get_primary_monitor() or display.get_monitor(0)).get_workarea()
         self.move(geo.get("x", area.x + area.width - w - 40), geo.get("y", area.y + area.height - h - 30))
 
+    def fit(self):
+        """Keep the whole card on screen; it grows when the first calendar arrives."""
+        size = self.get_preferred_size()[1]
+        x, y = self.get_position()
+        area = Gdk.Display.get_default().get_monitor_at_point(x, y).get_workarea()
+        right, bottom = area.x + area.width, area.y + area.height
+        new_x = max(area.x, right - size.width - 40) if x + size.width > right else x
+        new_y = max(area.y, bottom - size.height - 30) if y + size.height > bottom else y
+        if (new_x, new_y) != (x, y):
+            self.move(new_x, new_y)
+        return False
+
     def update(self):
         data = self.app.data
         days = data.get("days", {})
@@ -407,6 +419,7 @@ class App(Gtk.Application):
             self.data = result
             write_json(CACHE, result)
         self.win.update()
+        GLib.idle_add(self.win.fit)
         return False
 
     def tick(self):

@@ -7,7 +7,7 @@ set -euo pipefail
 # All in one function so a cut-off download can't run half a script.
 main() {
 
-VERSION="1.0.0"
+VERSION="1.0.1"
 REPO="chhari07/ubuntu-widgets"
 APP_ID="io.github.chhari07.UbuntuWidgets"
 
