@@ -42,7 +42,7 @@ Both also refresh after the laptop wakes and when you press the refresh arrow.
 ## Requirements
 
 - Ubuntu 24.04 with GNOME, on Wayland or X11. This is the tested platform.
-- `python3-gi` and `gir1.2-gtk-3.0`, included with Ubuntu Desktop.
+- `python3-gi` and `gir1.2-gtk-3.0`, included with Ubuntu Desktop. Without `librsvg2-common`, also included, the calendar runs without its logo.
 - For the Repo Analyser: `gir1.2-webkit2-4.1` and a logged-in [GitHub CLI](https://cli.github.com/).
 
 To add anything that is missing:

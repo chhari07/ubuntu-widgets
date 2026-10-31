@@ -191,7 +191,10 @@ class Widget(Gtk.Window):
 
         # title bar: traffic lights, title, updated + refresh
         top = Gtk.Box(spacing=8, margin_top=14, margin_bottom=8, margin_start=18, margin_end=18)
-        logo = Gtk.Image.new_from_pixbuf(GdkPixbuf.Pixbuf.new_from_file_at_size(LOGO, 20, 20))
+        try:
+            logo = Gtk.Image.new_from_pixbuf(GdkPixbuf.Pixbuf.new_from_file_at_size(LOGO, 20, 20))
+        except GLib.Error:  # minimal systems may have no SVG loader (librsvg2-common)
+            logo = Gtk.Image()
         top.pack_start(clickable(logo, app.open_profile, "Open GitHub profile"), False, False, 0)
         title = label(f"GitHub · {USER}", name="title")
         title.set_margin_start(2)
