@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src file:">
+<title>GitHub Repo Analyser</title>
+<style>
+  :root { --card:rgba(22,24,28,.78); --menu:#1c1f24; --line:rgba(255,255,255,.18); --soft:rgba(255,255,255,.04); --dim:rgba(255,255,255,.55); --text:rgba(255,255,255,.95); --idle:rgba(255,255,255,.16); --green:#39d353; }
+  * { box-sizing:border-box; margin:0; }
+  html, body { height:100%; background:transparent; overflow:hidden; }
+  body { color:var(--text); font:12px Inter, Ubuntu, sans-serif; user-select:none; cursor:move; }
+  .card { position:relative; width:440px; height:334px; border:1px solid var(--line); border-radius:18px; background:var(--card); overflow:hidden; }
+  button, input { font:inherit; color:inherit; }
+  button { border:0; background:none; cursor:pointer; }
+  .mark { position:absolute; left:16px; top:15px; width:20px; height:20px; cursor:pointer; }
+  .selector { position:absolute; left:44px; top:8px; display:flex; align-items:center; gap:6px; max-width:300px; height:26px; padding:0 6px 0 8px; border:1px solid var(--line); border-radius:7px; background:var(--soft); font-size:14px; font-weight:600; }
+  .selector:hover { background:rgba(255,255,255,.09); }
+  .selector span { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .selector svg, .refresh svg, .check { flex:none; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+  .selector svg { width:16px; height:16px; color:var(--dim); }
+  .meta { position:absolute; left:52px; top:37px; width:370px; overflow:hidden; color:var(--dim); white-space:nowrap; text-overflow:ellipsis; }
+  .meta.warn { color:#e3b341; }
+  .refresh { position:absolute; right:14px; top:14px; width:24px; height:24px; padding:2px; color:var(--dim); }
+  .refresh:hover { color:#fff; }
+  .refresh svg { width:20px; height:20px; }
+  .busy svg { animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .graph { position:absolute; left:16px; top:66px; width:408px; height:92px; cursor:pointer; }
+  .graph > svg { width:408px; height:92px; overflow:visible; fill:none; }
+  .ln { stroke:var(--idle); stroke-width:2.5; stroke-linecap:round; }
+  .draw { stroke:var(--green); stroke-width:2.5; stroke-linecap:round; }
+  .label { fill:var(--dim); font-size:10px; font-weight:500; }
+  .pill { position:absolute; right:0; top:0; height:22px; padding:0 14px; border-radius:11px; font-size:10px; font-weight:500; line-height:20px; border:1px solid #26a641; color:var(--green); }
+  .pill.merged { background:#006d32; border-color:#006d32; color:var(--text); }
+  .empty { position:absolute; left:0; right:0; top:22px; color:var(--dim); text-align:center; }
+  .bar { position:absolute; left:16px; top:170px; display:flex; gap:0; width:408px; height:8px; overflow:hidden; border-radius:4px; background:var(--idle); }
+  .bar span { display:block; min-width:2px; }
+  .legend { position:absolute; left:16px; top:184px; display:flex; gap:12px; width:408px; height:14px; overflow:hidden; color:var(--dim); font-size:10px; font-weight:500; white-space:nowrap; }
+  .legend i, .row i { display:inline-block; width:8px; height:8px; margin-right:4px; border-radius:50%; background:var(--dim); }
+  .days-head { position:absolute; left:16px; top:206px; display:flex; justify-content:space-between; width:408px; color:var(--dim); font-size:10px; font-weight:500; }
+  .days { position:absolute; left:16px; top:222px; display:flex; align-items:flex-end; gap:2px; width:408px; height:32px; }
+  .days span { flex:1; display:flex; align-items:flex-end; height:100%; }
+  .days span i { display:block; width:100%; border-radius:2px; background:var(--idle); }
+  .days span:hover i { outline:1px solid rgba(255,255,255,.6); }
+  .days .l1 { background:#0e4429; } .days .l2 { background:#006d32; } .days .l3 { background:#26a641; } .days .l4 { background:#39d353; }
+  .stats { position:absolute; left:0; right:0; bottom:0; display:grid; grid-template-columns:repeat(4,1fr); height:70px; border-top:1px solid var(--line); background:var(--soft); }
+  .stats div { padding:11px 16px; border-left:1px solid var(--line); }
+  .stats div:first-child { border-left:0; }
+  .stats span { display:block; color:var(--dim); font-size:11px; }
+  .stats b { display:block; margin-top:2px; font-size:22px; font-weight:600; }
+  .menu { position:absolute; left:44px; top:38px; display:none; width:300px; height:236px; padding:8px 0 0; border:1px solid var(--line); border-radius:10px; background:var(--menu); box-shadow:0 8px 24px rgba(0,0,0,.5); cursor:default; z-index:2; }
+  .menu.open { display:block; }
+  .menu input { display:block; width:284px; height:28px; margin:0 8px 8px; padding:0 10px; border:0; outline:0; border-radius:6px; background:var(--soft); user-select:text; }
+  .menu input:focus { box-shadow:0 0 0 1px #26a641; }
+  .menu input::placeholder { color:var(--dim); }
+  .list { height:188px; overflow-x:hidden; overflow-y:auto; border-radius:0 0 10px 10px; }
+  .list::-webkit-scrollbar { width:6px; }
+  .list::-webkit-scrollbar-thumb { border-radius:3px; background:var(--idle); }
+  .row { display:grid; grid-template-columns:32px minmax(0,1fr) auto; align-items:center; width:100%; height:36px; padding-right:12px; text-align:left; }
+  .row:hover, .row.on { background:rgba(255,255,255,.06); }
+  .check { width:14px; height:14px; margin-left:10px; color:var(--green); }
+  .row strong { display:block; overflow:hidden; font-weight:400; white-space:nowrap; text-overflow:ellipsis; }
+  .row small { display:block; color:var(--dim); font-size:10px; }
+  .row i { width:6px; height:6px; }
+  .row em { margin-left:8px; color:var(--dim); font-size:10px; font-style:normal; }
+  .none { padding:16px; color:var(--dim); text-align:center; }
+</style>
+</head>
+<body>
+<main class="card" id="card">
+  <img class="mark" id="mark" src="github-mark.svg" alt="Open on GitHub" title="Open on GitHub">
+  <button class="selector" id="selector" title="Choose a repo"><span id="name">Loading…</span><svg viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg></button>
+  <p class="meta" id="meta"></p>
+  <button class="refresh" id="refresh" title="Refresh now"><svg viewBox="0 0 20 20"><path d="M16 10a6 6 0 1 1-2-4.5M16 3v3.5h-3.5"/></svg></button>
+  <div class="graph" id="graph"></div>
+  <div class="bar" id="bar"></div>
+  <div class="legend" id="legend"></div>
+  <div class="days-head"><span>Commits, last 30 days</span><span id="daysInfo"></span></div>
+  <div class="days" id="days"></div>
+  <section class="stats" id="stats"></section>
+  <div class="menu" id="menu">
+    <input id="search" spellcheck="false" autocomplete="off">
+    <div class="list" id="list"></div>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const post = (msg) => window.webkit.messageHandlers.app.postMessage(JSON.stringify(msg));
+const NS = 'http://www.w3.org/2000/svg';
+const BRANCH = 'M48 62C70 62 70 22 92 22L268 22C290 22 290 62 312 62';
+const FULL = BRANCH + 'L392 62';
+const DRAW_MS = 2200, REPLAY_MS = 60000;
+let model = null, shownKey = null, cancelPlay = null, replayTimer = null, active = -1, shown = [];
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+function svgEl(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function ago(iso) {
+  const m = Math.max(0, (Date.now() - new Date(iso)) / 60000);
+  const unit = (n, s) => `${n} ${s}${n === 1 ? '' : 's'} ago`;
+  if (m < 1) return 'just now';
+  if (m < 60) return unit(Math.floor(m), 'minute');
+  if (m < 1440) return unit(Math.floor(m / 60), 'hour');
+  if (m < 43200) return unit(Math.floor(m / 1440), 'day');
+  if (m < 525600) return unit(Math.floor(m / 43200), 'month');
+  return unit(Math.floor(m / 525600), 'year');
+}
+function short(n) {
+  return n >= 10000 ? `${Math.round(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+}
+function clip(s, max) {
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}
+
+function renderGraph(d) {
+  if (cancelPlay) cancelPlay();
+  clearInterval(replayTimer);
+  const g = $('graph');
+  g.textContent = '';
+  const pr = d && d.merge;
+  const svg = svgEl('svg', { viewBox: '0 0 408 92' }, g);
+  svgEl('path', { class: 'ln', d: 'M0 62L400 62' }, svg);
+  const base = pr ? pr.baseRefName : d && d.defaultBranchRef ? d.defaultBranchRef.name : 'main';
+  const baseText = svgEl('text', { class: 'label', x: 0, y: 80 }, svg);
+  baseText.textContent = clip(base, 24);
+  if (!pr) {
+    g.title = '';
+    if (d) g.appendChild(el('p', 'empty', 'No merged pull requests yet'));
+    return;
+  }
+  g.title = `#${pr.number} ${pr.title}\nClick to replay`;
+  svgEl('path', { class: 'ln', d: BRANCH }, svg);
+  const shape = svgEl('path', { d: FULL }, svg);
+  const count = Math.min(pr.commits.totalCount, 5);
+  const xs = Array.from({ length: count }, (_, i) => count === 1 ? 180 : 110 + i * 140 / (count - 1));
+  const total = shape.getTotalLength();
+  const lengthAt = (x, y) => {
+    for (let l = 0; l <= total; l += 2) {
+      const p = shape.getPointAtLength(l);
+      if (Math.abs(p.x - x) < 1.5 && Math.abs(p.y - y) < 1.5) return l;
+    }
+    return total;
+  };
+  const dots = xs.map((x) => ({ at: lengthAt(x, 22), node: svgEl('circle', { cx: x, cy: 22, r: 4, fill: 'rgba(255,255,255,.16)' }, svg) }));
+  const mergeAt = lengthAt(312, 62);
+  const mergeDot = svgEl('circle', { cx: 312, cy: 62, r: 5, fill: 'rgba(255,255,255,.16)' }, svg);
+  const draw = svgEl('path', { class: 'draw', d: FULL, 'stroke-dasharray': `${total} ${total}` }, svg);
+  svgEl('circle', { cx: 48, cy: 62, r: 5, fill: '#26a641' }, svg);
+  const ring = svgEl('circle', { cx: 312, cy: 62, r: 5, fill: '#39d353', opacity: 0 }, svg);
+  const glow = svgEl('circle', { r: 10, fill: '#39d353', opacity: .3 }, svg);
+  const head = svgEl('circle', { r: 5, fill: '#39d353' }, svg);
+  const branch = svgEl('text', { class: 'label', x: 96, y: 12 }, svg);
+  branch.textContent = clip(pr.headRefName, 38);
+  const when = svgEl('text', { class: 'label', x: 408, y: 80, 'text-anchor': 'end' }, svg);
+  when.textContent = `#${pr.number} merged ${ago(pr.mergedAt)}`;
+  const pill = el('span', 'pill', 'Open');
+  g.appendChild(pill);
+
+  const frame = (len, now, mergedTime) => {
+    draw.setAttribute('stroke-dashoffset', total - len);
+    const p = shape.getPointAtLength(len);
+    for (const c of [head, glow]) { c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); }
+    for (const d of dots) d.node.setAttribute('fill', len >= d.at ? '#39d353' : 'rgba(255,255,255,.16)');
+    const merged = len >= mergeAt;
+    mergeDot.setAttribute('fill', merged ? '#39d353' : 'rgba(255,255,255,.16)');
+    pill.textContent = merged ? 'Merged' : 'Open';
+    pill.className = merged ? 'pill merged' : 'pill';
+    const age = merged && mergedTime !== null ? (now - mergedTime) / 600 : 1;
+    ring.setAttribute('r', 5 + 21 * Math.min(age, 1));
+    ring.setAttribute('opacity', age < 1 ? .5 * (1 - age) : 0);
+  };
+  const play = () => {
+    if (cancelPlay) cancelPlay();
+    if (matchMedia('(prefers-reduced-motion:reduce)').matches) { frame(total, 0, null); return; }
+    const start = performance.now();
+    let id, mergedTime = null;
+    const step = (now) => {
+      const len = Math.min(1, (now - start) / DRAW_MS) * total;
+      if (len >= mergeAt && mergedTime === null) mergedTime = now;
+      frame(len, now, mergedTime);
+      id = (len < total || (mergedTime !== null && now - mergedTime < 600)) ? requestAnimationFrame(step) : null;
+    };
+    id = requestAnimationFrame(step);
+    cancelPlay = () => { if (id) cancelAnimationFrame(id); };
+  };
+  g.onclick = play;
+  play();
+  replayTimer = setInterval(() => { if (!document.hidden) play(); }, REPLAY_MS);
+}
+
+function renderLanguages(d) {
+  const bar = $('bar'), legend = $('legend');
+  bar.textContent = ''; legend.textContent = '';
+  const langs = d && d.languages;
+  if (!langs || !langs.totalSize) {
+    if (d) legend.textContent = 'No code detected';
+    return;
+  }
+  for (const { size, node } of langs.edges) {
+    const pct = size * 100 / langs.totalSize;
+    const part = el('span');
+    part.style.width = `${pct}%`;
+    part.style.background = node.color || 'rgba(255,255,255,.4)';
+    part.title = `${node.name} ${pct.toFixed(1)}%`;
+    bar.appendChild(part);
+    const item = el('span');
+    const swatch = el('i');
+    if (node.color) swatch.style.background = node.color;
+    item.append(swatch, `${node.name} ${pct < 10 ? pct.toFixed(1) : Math.round(pct)}%`);
+    legend.appendChild(item);
+  }
+}
+
+function dayKey(date) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+function plural(n) {
+  return `${n} commit${n === 1 ? '' : 's'}`;
+}
+function renderDays(d) {
+  const box = $('days'), info = $('daysInfo');
+  box.textContent = '';
+  const daily = d && d.daily;
+  if (!daily) { info.textContent = ''; return; }
+  const now = new Date();
+  const days = Array.from({ length: 30 }, (_, i) => {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29 + i);
+    return { date, count: daily[dayKey(date)] || 0 };
+  });
+  const most = Math.max(1, ...days.map((x) => x.count));
+  const total = days.reduce((sum, x) => sum + x.count, 0);
+  const summary = plural(total);
+  info.textContent = summary;
+  for (const { date, count } of days) {
+    const cell = el('span');
+    const bar = el('i');
+    bar.style.height = count ? `${Math.max(6, 32 * count / most)}px` : '3px';
+    if (count) bar.className = `l${Math.max(1, Math.ceil(4 * count / most))}`;
+    cell.appendChild(bar);
+    const text = `${plural(count)} · ${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`;
+    cell.onmouseenter = () => { info.textContent = text; };
+    cell.onmouseleave = () => { info.textContent = summary; };
+    box.appendChild(cell);
+  }
+}
+
+function renderStats(d) {
+  const history = d && d.defaultBranchRef && d.defaultBranchRef.target.history;
+  const rows = [
+    ['Commits', history ? history.totalCount : d ? 0 : null],
+    ['Stars', d ? d.stargazerCount : null],
+    ['Forks', d ? d.forkCount : null],
+    ['Branches', d ? d.refs.totalCount : null],
+  ];
+  $('stats').textContent = '';
+  for (const [label, value] of rows) {
+    const col = el('div');
+    col.append(el('span', '', label), el('b', '', value === null ? '–' : short(value)));
+    $('stats').appendChild(col);
+  }
+}
+
+function renderMeta() {
+  const { login, detail: d, error, selected } = model;
+  const m = $('meta');
+  m.classList.toggle('warn', !!error);
+  m.title = error || '';
+  if (error && error.startsWith('Run:')) { m.textContent = error; return; }
+  if (error) { m.textContent = d ? 'Offline · showing saved data' : 'Offline · no data yet'; return; }
+  if (!selected) { m.textContent = model.busy ? 'Loading your repos…' : 'No repos found'; return; }
+  if (!d) { m.textContent = 'Loading…'; return; }
+  const parts = [login];
+  if (d.isPrivate) parts.push('private');
+  if (d.defaultBranchRef) parts.push(d.defaultBranchRef.name);
+  if (d.pushedAt) parts.push(`pushed ${ago(d.pushedAt)}`);
+  m.textContent = parts.join(' · ');
+}
+
+function renderList() {
+  const q = $('search').value.trim().toLowerCase();
+  shown = model.repos.filter((r) => r.name.toLowerCase().includes(q));
+  active = Math.max(0, shown.findIndex((r) => r.name === model.selected));
+  const list = $('list');
+  list.textContent = '';
+  if (!shown.length) { list.appendChild(el('p', 'none', 'No matching repos')); return; }
+  shown.forEach((r, i) => {
+    const row = el('button', 'row');
+    row.dataset.i = i;
+    if (r.name === model.selected) {
+      const check = svgEl('svg', { class: 'check', viewBox: '0 0 14 14' }, row);
+      svgEl('path', { d: 'M2.5 7.5l3 3 6-7' }, check);
+    } else row.appendChild(el('span'));
+    const info = el('span');
+    const small = el('small');
+    const swatch = el('i');
+    const lang = r.primaryLanguage;
+    if (lang && lang.color) swatch.style.background = lang.color;
+    small.append(swatch, lang ? lang.name : 'No language');
+    if (r.isPrivate) small.append(' · private');
+    info.append(el('strong', '', r.name), small);
+    row.append(info, el('em', '', `★ ${short(r.stargazerCount)}`));
+    row.onclick = () => choose(r.name);
+    row.onmouseenter = () => mark(i, false);
+    list.appendChild(row);
+  });
+  mark(active, q === '');
+}
+function mark(i, scroll) {
+  active = i;
+  [...$('list').children].forEach((c, n) => c.classList.toggle('on', n === i));
+  if (scroll && $('list').children[i]) $('list').children[i].scrollIntoView({ block: 'nearest' });
+}
+function choose(name) {
+  closeMenu();
+  shownKey = null;
+  post({ type: 'select', name });
+}
+function openMenu() {
+  $('search').value = '';
+  $('search').placeholder = `Search ${model.repos.length} repositories`;
+  $('menu').classList.add('open');
+  renderList();
+  $('search').focus();
+}
+function closeMenu() { $('menu').classList.remove('open'); }
+
+window.render = (next) => {
+  model = next;
+  const d = next.detail;
+  $('name').textContent = next.selected || 'No repo';
+  $('refresh').classList.toggle('busy', next.busy);
+  renderMeta();
+  renderLanguages(d);
+  renderDays(d);
+  renderStats(d);
+  // Only restart the graph when what it shows changes, not on every refresh tick.
+  const key = JSON.stringify([next.selected, d && d.merge, d && d.defaultBranchRef && d.defaultBranchRef.name]);
+  if (key !== shownKey) { shownKey = key; renderGraph(d); }
+  if ($('menu').classList.contains('open')) {
+    const top = $('list').scrollTop;
+    renderList();
+    $('list').scrollTop = top;
+  }
+};
+
+$('selector').onclick = (e) => { e.stopPropagation(); if (model) ($('menu').classList.contains('open') ? closeMenu() : openMenu()); };
+$('refresh').onclick = () => post({ type: 'refresh' });
+$('mark').onclick = () => { if (model) { const d = model.detail; post({ type: 'open', url: d ? d.url : `https://github.com/${model.login}` }); } };
+$('search').oninput = renderList;
+$('search').onkeydown = (e) => {
+  if (e.key === 'Escape') closeMenu();
+  else if (e.key === 'ArrowDown' && shown.length) { e.preventDefault(); mark(Math.min(active + 1, shown.length - 1), true); }
+  else if (e.key === 'ArrowUp' && shown.length) { e.preventDefault(); mark(Math.max(active - 1, 0), true); }
+  else if (e.key === 'Enter' && shown[active]) choose(shown[active].name);
+};
+$('menu').addEventListener('mousedown', (e) => e.stopPropagation());
+
+// Dragging starts only after real movement, so a plain click can never leave the window stuck moving.
+let press = null;
+document.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  if (!e.target.closest('#menu, #selector')) closeMenu();
+  press = e.target.closest('button, #graph, #mark, input') ? null : { x: e.screenX, y: e.screenY };
+});
+document.addEventListener('mousemove', (e) => {
+  if (press && e.buttons === 1 && Math.hypot(e.screenX - press.x, e.screenY - press.y) > 3) {
+    press = null;
+    post({ type: 'drag' });
+  }
+});
+document.addEventListener('mouseup', () => { press = null; });
+renderStats(null);
+post({ type: 'ready' });
+</script>
+</body>
+</html>

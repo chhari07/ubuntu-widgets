@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck desktop-file-utils xvfb imagemagick \
+            python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1 fonts-inter
+
+      - name: ShellCheck
+        run: shellcheck -x install.sh uninstall.sh tests/test-install.sh tests/smoke.sh tools/build-release.sh
+
+      - name: Python syntax
+        run: /usr/bin/python3 -m py_compile widgets/*/widget.py tests/fixtures/gh
+
+      - name: Version matches
+        run: test "$(cat VERSION)" = "$(./install.sh --version)"
+
+      - name: Install tests
+        run: PATH="/usr/bin:$PATH" tests/test-install.sh
+
+      - name: Run the widgets
+        run: PATH="/usr/bin:$PATH" xvfb-run -a -s "-screen 0 1280x800x24" dbus-run-session -- tests/smoke.sh shots
+
+      - name: Save screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot
+          path: shots/
+          if-no-files-found: ignore
