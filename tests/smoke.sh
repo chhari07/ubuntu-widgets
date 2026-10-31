@@ -7,6 +7,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SHOTS="${1:-}"
 TMP="$(mktemp -d)"
 PIDS=()
+# shellcheck disable=SC2317  # runs from the trap
 cleanup() {
   for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null || true; done
   rm -rf "$TMP"

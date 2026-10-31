@@ -204,7 +204,9 @@ else
   skip "GitHub Repo Analyser"
 fi
 
-command -v update-desktop-database >/dev/null && update-desktop-database -q "$DATA/applications" 2>/dev/null || true
+if command -v update-desktop-database >/dev/null; then
+  update-desktop-database -q "$DATA/applications" 2>/dev/null || true
+fi
 
 start_widget() {
   setsid python3 "$TARGET/$1/widget.py" --show >/dev/null 2>&1 < /dev/null &

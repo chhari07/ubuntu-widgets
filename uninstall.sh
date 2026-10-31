@@ -23,7 +23,9 @@ done
 for suffix in ContributionCalendar RepoAnalyser; do
   rm -f "$DATA/applications/$APP_ID.$suffix.desktop" "$CONF/autostart/$APP_ID.$suffix.desktop"
 done
-command -v update-desktop-database >/dev/null && update-desktop-database -q "$DATA/applications" 2>/dev/null || true
+if command -v update-desktop-database >/dev/null; then
+  update-desktop-database -q "$DATA/applications" 2>/dev/null || true
+fi
 
 rm -rf "$TARGET" "$CONF/ubuntu-widgets" "$CACHE/ubuntu-widgets"
 echo "Ubuntu Widgets has been removed."
