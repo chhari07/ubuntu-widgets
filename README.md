@@ -10,10 +10,13 @@ Glass GitHub widgets for the Ubuntu desktop, installed with one command.
 curl -fsSL https://github.com/chhari07/ubuntu-widgets/releases/latest/download/install.sh | bash
 ```
 
+[![Watch the Ubuntu Widgets video](docs/media/brand-video.jpg)](docs/media/ubuntu-widgets-brand-16x9.mp4)
+
+**[Watch the video](docs/media/ubuntu-widgets-brand-16x9.mp4)** (14 seconds, with sound) · [Vertical version](docs/media/ubuntu-widgets-brand-9x16.mp4)
+
 | GitHub Repo Analyser | GitHub Contribution Calendar |
 | --- | --- |
-| [![GitHub Repo Analyser widget](docs/media/repo-analyser.jpg)](docs/media/repo-analyser-explainer.mp4) | [![GitHub Contribution Calendar widget](docs/media/contribution-calendar.jpg)](docs/media/contribution-calendar-explainer.mp4) |
-| [Watch the walkthrough](docs/media/repo-analyser-explainer.mp4) (39 seconds, with sound) | [Watch the walkthrough](docs/media/contribution-calendar-explainer.mp4) (46 seconds, with sound) |
+| ![GitHub Repo Analyser widget](docs/media/repo-analyser.jpg) | ![GitHub Contribution Calendar widget](docs/media/contribution-calendar.jpg) |
 
 ## Contents
 
