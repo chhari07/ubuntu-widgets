@@ -1,6 +1,7 @@
 # Ubuntu Widgets
 
 Glass GitHub widgets for the Ubuntu desktop, installed with one command.
+The same two widgets also run on my Android home screen ([GitHub Widgets](https://amankumarchhari.vercel.app/tools/github-phone-widgets)). More of my tools: [amankumarchhari.vercel.app/ui-kit](https://amankumarchhari.vercel.app/ui-kit).
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Ubuntu 24.04](https://img.shields.io/badge/Ubuntu-24.04-E95420.svg)
